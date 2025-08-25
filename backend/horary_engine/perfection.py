@@ -83,8 +83,9 @@ def check_future_prohibitions(
             t2 = calc_future_aspect_time(pos2, p_pos, aspect, chart.julian_day, days_ahead)
 
             if _valid(t1, pos1, p_pos) and _valid(t2, pos2, p_pos):
-                if abs(p_pos.speed) > max(abs(pos1.speed), abs(pos2.speed)):
-                    t_event = max(t1, t2)
+                t_first, t_second = (t1, t2) if t1 <= t2 else (t2, t1)
+                if t_first < t_second and abs(p_pos.speed) > max(abs(pos1.speed), abs(pos2.speed)):
+                    t_event = t_second
                     quality = (
                         "easier"
                         if aspect in (Aspect.CONJUNCTION, Aspect.TRINE, Aspect.SEXTILE)
@@ -114,8 +115,8 @@ def check_future_prohibitions(
                             },
                         }
                     )
-                elif abs(p_pos.speed) < min(abs(pos1.speed), abs(pos2.speed)):
-                    t_event = max(t1, t2)
+                elif t_first < t_second and abs(p_pos.speed) < min(abs(pos1.speed), abs(pos2.speed)):
+                    t_event = t_second
                     quality = (
                         "easier"
                         if aspect in (Aspect.CONJUNCTION, Aspect.TRINE, Aspect.SEXTILE)
