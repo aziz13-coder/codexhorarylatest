@@ -60,23 +60,13 @@ def check_future_prohibitions(
     reception_calc = TraditionalReceptionCalculator()
 
     def _valid(t: float, p_a, p_b) -> bool:
-        if t is None or t >= days_ahead or t <= -days_ahead:
+        if t is None or t <= 0 or t >= days_ahead:
             return False
-        if not require_in_sign or allow_out_of_sign:
-            return True
-        if t >= 0:
+        if require_in_sign and not allow_out_of_sign:
             exit_a = days_to_sign_exit(p_a.longitude, p_a.speed)
             exit_b = days_to_sign_exit(p_b.longitude, p_b.speed)
-            return (
-                (exit_a is None or t < exit_a)
-                and (exit_b is None or t < exit_b)
-            )
-        entry_a = days_to_sign_exit(p_a.longitude, -p_a.speed)
-        entry_b = days_to_sign_exit(p_b.longitude, -p_b.speed)
-        return (
-            (entry_a is None or -t < entry_a)
-            and (entry_b is None or -t < entry_b)
-        )
+            return t < exit_a and t < exit_b
+        return True
 
     events: List[Dict[str, Any]] = []
 
