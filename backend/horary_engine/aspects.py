@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime
 import math
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import swisseph as swe
 
@@ -48,8 +48,7 @@ def time_to_perfection(
 
 def calculate_moon_last_aspect(
     planets: Dict[Planet, PlanetPosition],
-    jd_ut: float,
-    get_moon_speed: Callable[[float], float],
+    _jd_ut: float,
 ) -> Optional[LunarAspect]:
     """Calculate Moon's last separating aspect"""
 
@@ -98,8 +97,7 @@ def calculate_moon_last_aspect(
 
 def calculate_moon_next_aspect(
     planets: Dict[Planet, PlanetPosition],
-    jd_ut: float,
-    get_moon_speed: Callable[[float], float],
+    _jd_ut: float,
     ignore_orb_for_voc: bool = False,
 ) -> Optional[LunarAspect]:
     """Calculate Moon's next applying aspect.
@@ -117,7 +115,6 @@ def calculate_moon_next_aspect(
     """
 
     moon_pos = planets[Planet.MOON]
-    moon_speed = get_moon_speed(jd_ut)
 
     # Only consider classical planets as targets
     classical_targets = {

@@ -665,10 +665,10 @@ class EnhancedTraditionalAstrologicalCalculator:
 
         # NEW: Calculate last and next lunar aspects
         moon_last_aspect = calculate_moon_last_aspect(
-            planets, jd_ut, self.get_real_moon_speed
+            planets, jd_ut
         )
         moon_next_aspect = calculate_moon_next_aspect(
-            planets, jd_ut, self.get_real_moon_speed
+            planets, jd_ut
         )
         
         chart = HoraryChart(
@@ -3477,7 +3477,6 @@ class EnhancedTraditionalHoraryJudgmentEngine:
         moon_next_aspect = calculate_moon_next_aspect(
             chart.planets,
             chart.julian_day,
-            self.calculator.get_real_moon_speed,
             ignore_orb_for_voc=True,
         )
 
