@@ -429,9 +429,11 @@ def calculate_enhanced_degrees_to_exact(
             try:
                 exact_jd = jd_ut + t
                 # Convert back to datetime
-                year, month, day, hour = swe.jdut1_to_utc(exact_jd, 1)  # Flag 1 for Gregorian
+                year, month, day, hour, minute, second = swe.jdut1_to_utc(
+                    exact_jd, 1
+                )  # Flag 1 for Gregorian
                 exact_time = datetime.datetime(
-                    int(year), int(month), int(day), int(hour), int((hour % 1) * 60)
+                    int(year), int(month), int(day), int(hour), int(minute), int(second)
                 )
             except Exception:
                 exact_time = None
