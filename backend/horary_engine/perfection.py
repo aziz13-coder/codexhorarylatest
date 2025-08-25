@@ -34,7 +34,7 @@ def check_future_prohibitions(
     sig1: Planet,
     sig2: Planet,
     days_ahead: float,
-    calc_future_aspect_time: Callable[[Any, Any, Aspect, float, float], float],
+    calc_aspect_time: Callable[[Any, Any, Aspect, float, float], float],
 ) -> Dict[str, Any]:
     """Scan for intervening aspects before a main perfection.
 
@@ -46,8 +46,9 @@ def check_future_prohibitions(
         Significators forming the main perfection.
     days_ahead : float
         Time until the main perfection in days.
-    calc_future_aspect_time : callable
-        Function for computing time to a future aspect.
+    calc_aspect_time : callable
+        Function for computing signed time to an aspect. Positive values are
+        future contacts while negative values indicate a recent separation.
     """
 
     config = cfg()
@@ -59,15 +60,23 @@ def check_future_prohibitions(
     reception_calc = TraditionalReceptionCalculator()
 
     def _valid(t: float, p_a, p_b) -> bool:
-        if t is None or t <= 0 or t >= days_ahead:
+        if t is None or t >= days_ahead or t <= -days_ahead:
             return False
-        if not require_in_sign:
+        if not require_in_sign or allow_out_of_sign:
             return True
-        if allow_out_of_sign:
-            return True
-        exit_a = days_to_sign_exit(p_a.longitude, p_a.speed)
-        exit_b = days_to_sign_exit(p_b.longitude, p_b.speed)
-        return t < exit_a and t < exit_b
+        if t >= 0:
+            exit_a = days_to_sign_exit(p_a.longitude, p_a.speed)
+            exit_b = days_to_sign_exit(p_b.longitude, p_b.speed)
+            return (
+                (exit_a is None or t < exit_a)
+                and (exit_b is None or t < exit_b)
+            )
+        entry_a = days_to_sign_exit(p_a.longitude, -p_a.speed)
+        entry_b = days_to_sign_exit(p_b.longitude, -p_b.speed)
+        return (
+            (entry_a is None or -t < entry_a)
+            and (entry_b is None or -t < entry_b)
+        )
 
     events: List[Dict[str, Any]] = []
 
@@ -79,103 +88,146 @@ def check_future_prohibitions(
             continue
 
         for aspect in ASPECT_TYPES:
-            t1 = calc_future_aspect_time(pos1, p_pos, aspect, chart.julian_day, days_ahead)
-            t2 = calc_future_aspect_time(pos2, p_pos, aspect, chart.julian_day, days_ahead)
+            t1 = calc_aspect_time(pos1, p_pos, aspect, chart.julian_day, days_ahead)
+            t2 = calc_aspect_time(pos2, p_pos, aspect, chart.julian_day, days_ahead)
 
-            if _valid(t1, pos1, p_pos) and _valid(t2, pos2, p_pos):
-                t_first, t_second = (t1, t2) if t1 <= t2 else (t2, t1)
-                if t_first < t_second and abs(p_pos.speed) > max(abs(pos1.speed), abs(pos2.speed)):
-                    t_event = t_second
-                    quality = (
-                        "easier"
-                        if aspect in (Aspect.CONJUNCTION, Aspect.TRINE, Aspect.SEXTILE)
-                        else "with difficulty"
-                    )
-                    rec1 = reception_calc.calculate_comprehensive_reception(chart, planet, sig1)
-                    rec2 = reception_calc.calculate_comprehensive_reception(chart, planet, sig2)
-                    has_reception = rec1["type"] != "none" or rec2["type"] != "none"
-                    reason = (
-                        f"Perfection by translation ({aspect.display_name.lower()}): positive "
-                        + (f"({quality})" if quality == "easier" else f"{quality}")
-                    )
-                    if has_reception and quality == "with difficulty":
-                        reason += " (softened by reception)"
-                    events.append(
-                        {
-                            "t": t_event,
-                            "payload": {
-                                "prohibited": False,
-                                "type": "translation",
-                                "translator": planet,
-                                "t_event": t_event,
-                                "aspect": aspect,
-                                "quality": quality,
-                                "reception": has_reception,
-                                "reason": reason,
-                            },
-                        }
-                    )
-                elif t_first < t_second and abs(p_pos.speed) < min(abs(pos1.speed), abs(pos2.speed)):
-                    t_event = t_second
-                    quality = (
-                        "easier"
-                        if aspect in (Aspect.CONJUNCTION, Aspect.TRINE, Aspect.SEXTILE)
-                        else "with difficulty"
-                    )
-                    rec1 = reception_calc.calculate_comprehensive_reception(chart, planet, sig1)
-                    rec2 = reception_calc.calculate_comprehensive_reception(chart, planet, sig2)
-                    has_reception = rec1["type"] != "none" or rec2["type"] != "none"
-                    reason = (
-                        f"Perfection by collection ({aspect.display_name.lower()}): positive "
-                        + (f"({quality})" if quality == "easier" else f"{quality}")
-                    )
-                    if has_reception and quality == "with difficulty":
-                        reason += " (softened by reception)"
-                    events.append(
-                        {
-                            "t": t_event,
-                            "payload": {
-                                "prohibited": False,
-                                "type": "collection",
-                                "collector": planet,
-                                "t_event": t_event,
-                                "aspect": aspect,
-                                "quality": quality,
-                                "reception": has_reception,
-                                "reason": reason,
-                            },
-                        }
-                    )
-                else:
-                    if t1 <= t2:
+            valid1 = _valid(t1, pos1, p_pos)
+            valid2 = _valid(t2, pos2, p_pos)
+            if valid1 and valid2:
+                if (t1 < 0 < t2) or (t2 < 0 < t1):
+                    t_event = t2 if t2 > 0 else t1
+                    if abs(p_pos.speed) > max(abs(pos1.speed), abs(pos2.speed)):
+                        quality = (
+                            "easier"
+                            if aspect in (Aspect.CONJUNCTION, Aspect.TRINE, Aspect.SEXTILE)
+                            else "with difficulty"
+                        )
+                        rec1 = reception_calc.calculate_comprehensive_reception(chart, planet, sig1)
+                        rec2 = reception_calc.calculate_comprehensive_reception(chart, planet, sig2)
+                        has_reception = rec1["type"] != "none" or rec2["type"] != "none"
+                        reason = (
+                            f"Perfection by translation ({aspect.display_name.lower()}): positive "
+                            + (f"({quality})" if quality == "easier" else f"{quality}")
+                        )
+                        if has_reception and quality == "with difficulty":
+                            reason += " (softened by reception)"
                         events.append(
                             {
-                                "t": t1,
+                                "t": t_event,
                                 "payload": {
-                                    "prohibited": True,
-                                    "type": "prohibition",
-                                    "prohibitor": planet,
-                                    "significator": sig1,
-                                    "t_prohibition": t1,
-                                    "reason": f"{planet.value} {aspect.display_name.lower()}s {sig1.value} before perfection",
+                                    "prohibited": False,
+                                    "type": "translation",
+                                    "translator": planet,
+                                    "t_event": t_event,
+                                    "aspect": aspect,
+                                    "quality": quality,
+                                    "reception": has_reception,
+                                    "reason": reason,
+                                },
+                            }
+                        )
+                else:
+                    t_first, t_second = (t1, t2) if t1 <= t2 else (t2, t1)
+                    if (
+                        t_first < t_second
+                        and t_first >= 0
+                        and abs(p_pos.speed) > max(abs(pos1.speed), abs(pos2.speed))
+                    ):
+                        t_event = t_second
+                        quality = (
+                            "easier"
+                            if aspect in (Aspect.CONJUNCTION, Aspect.TRINE, Aspect.SEXTILE)
+                            else "with difficulty"
+                        )
+                        rec1 = reception_calc.calculate_comprehensive_reception(chart, planet, sig1)
+                        rec2 = reception_calc.calculate_comprehensive_reception(chart, planet, sig2)
+                        has_reception = rec1["type"] != "none" or rec2["type"] != "none"
+                        reason = (
+                            f"Perfection by translation ({aspect.display_name.lower()}): positive "
+                            + (f"({quality})" if quality == "easier" else f"{quality}")
+                        )
+                        if has_reception and quality == "with difficulty":
+                            reason += " (softened by reception)"
+                        events.append(
+                            {
+                                "t": t_event,
+                                "payload": {
+                                    "prohibited": False,
+                                    "type": "translation",
+                                    "translator": planet,
+                                    "t_event": t_event,
+                                    "aspect": aspect,
+                                    "quality": quality,
+                                    "reception": has_reception,
+                                    "reason": reason,
+                                },
+                            }
+                        )
+                    elif (
+                        t_first < t_second
+                        and t_first >= 0
+                        and abs(p_pos.speed) < min(abs(pos1.speed), abs(pos2.speed))
+                    ):
+                        t_event = t_second
+                        quality = (
+                            "easier"
+                            if aspect in (Aspect.CONJUNCTION, Aspect.TRINE, Aspect.SEXTILE)
+                            else "with difficulty"
+                        )
+                        rec1 = reception_calc.calculate_comprehensive_reception(chart, planet, sig1)
+                        rec2 = reception_calc.calculate_comprehensive_reception(chart, planet, sig2)
+                        has_reception = rec1["type"] != "none" or rec2["type"] != "none"
+                        reason = (
+                            f"Perfection by collection ({aspect.display_name.lower()}): positive "
+                            + (f"({quality})" if quality == "easier" else f"{quality}")
+                        )
+                        if has_reception and quality == "with difficulty":
+                            reason += " (softened by reception)"
+                        events.append(
+                            {
+                                "t": t_event,
+                                "payload": {
+                                    "prohibited": False,
+                                    "type": "collection",
+                                    "collector": planet,
+                                    "t_event": t_event,
+                                    "aspect": aspect,
+                                    "quality": quality,
+                                    "reception": has_reception,
+                                    "reason": reason,
                                 },
                             }
                         )
                     else:
-                        events.append(
-                            {
-                                "t": t2,
-                                "payload": {
-                                    "prohibited": True,
-                                    "type": "prohibition",
-                                    "prohibitor": planet,
-                                    "significator": sig2,
-                                    "t_prohibition": t2,
-                                    "reason": f"{planet.value} {aspect.display_name.lower()}s {sig2.value} before perfection",
-                                },
-                            }
-                        )
-            elif _valid(t1, pos1, p_pos):
+                        if t1 > 0 and (t1 <= t2 or t2 <= 0):
+                            events.append(
+                                {
+                                    "t": t1,
+                                    "payload": {
+                                        "prohibited": True,
+                                        "type": "prohibition",
+                                        "prohibitor": planet,
+                                        "significator": sig1,
+                                        "t_prohibition": t1,
+                                        "reason": f"{planet.value} {aspect.display_name.lower()}s {sig1.value} before perfection",
+                                    },
+                                }
+                            )
+                        elif t2 > 0 and (t2 < t1 or t1 <= 0):
+                            events.append(
+                                {
+                                    "t": t2,
+                                    "payload": {
+                                        "prohibited": True,
+                                        "type": "prohibition",
+                                        "prohibitor": planet,
+                                        "significator": sig2,
+                                        "t_prohibition": t2,
+                                        "reason": f"{planet.value} {aspect.display_name.lower()}s {sig2.value} before perfection",
+                                    },
+                                }
+                            )
+            elif valid1 and t1 > 0:
                 events.append(
                     {
                         "t": t1,
@@ -189,7 +241,7 @@ def check_future_prohibitions(
                         },
                     }
                 )
-            elif _valid(t2, pos2, p_pos):
+            elif valid2 and t2 > 0:
                 events.append(
                     {
                         "t": t2,
