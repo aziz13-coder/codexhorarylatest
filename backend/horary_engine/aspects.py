@@ -36,15 +36,13 @@ def time_to_perfection(
     lambda2 = pos2.longitude
     aspect_deg = aspect.degrees
 
-    theta0 = (lambda1 - lambda2 - aspect_deg) % 360
-
-    s1 = 1 if pos1.speed >= 0 else -1
-    s2 = 1 if pos2.speed >= 0 else -1
-    v = s1 * abs(pos1.speed) - s2 * abs(pos2.speed)
+    # delta is the minimal signed offset in (-180°, 180°]
+    delta = ((lambda1 - lambda2 - aspect_deg + 180) % 360) - 180
+    v = pos1.speed - pos2.speed
     if v == 0:
         return math.inf
 
-    t = ((-theta0) % 360) / v
+    t = -delta / v
     return t
 
 
