@@ -325,13 +325,18 @@ def extract_testimonies(chart: HoraryChart, contract: Dict[str, Planet]) -> List
         pos1 = chart.planets[sig1]
         pos2 = chart.planets[sig2]
 
-        def _calc_future_aspect_time(
+        def _calc_aspect_time(
             p1: PlanetPosition,
             p2: PlanetPosition,
             aspect: Aspect,
             jd_start: float = 0.0,
             max_days: float = 0.0,
         ) -> float:
+            """Return signed days until the aspect perfection.
+
+            Positive values represent future contacts while negative values
+            indicate the aspect perfected that many days in the past.
+            """
             target_angles = {
                 Aspect.CONJUNCTION: 0,
                 Aspect.SEXTILE: 60,
@@ -342,8 +347,13 @@ def extract_testimonies(chart: HoraryChart, contract: Dict[str, Planet]) -> List
             rel_speed = p1.speed - p2.speed
             if rel_speed == 0:
                 return float("inf")
-            delta = (p2.longitude + target_angles[aspect] - p1.longitude) % 360.0
-            return delta / rel_speed
+            diff = (
+                p2.longitude
+                + target_angles[aspect]
+                - p1.longitude
+                + 180
+            ) % 360 - 180
+            return diff / rel_speed
 
         aspect_types = [
             Aspect.CONJUNCTION,
@@ -354,13 +364,13 @@ def extract_testimonies(chart: HoraryChart, contract: Dict[str, Planet]) -> List
         ]
         times: List[float] = []
         for a in aspect_types:
-            t = _calc_future_aspect_time(pos1, pos2, a)
+            t = _calc_aspect_time(pos1, pos2, a)
             if t and t > 0:
                 times.append(t)
         if times:
             days_ahead = min(times)
             result = check_future_prohibitions(
-                chart, sig1, sig2, days_ahead, _calc_future_aspect_time
+                chart, sig1, sig2, days_ahead, _calc_aspect_time
             )
             if result.get("type") == "translation":
                 primitives.append(
