@@ -83,7 +83,7 @@ def check_future_prohibitions(
             t2 = calc_future_aspect_time(pos2, p_pos, aspect, chart.julian_day, days_ahead)
 
             if _valid(t1, pos1, p_pos) and _valid(t2, pos2, p_pos):
-                if p_pos.speed > max(pos1.speed, pos2.speed):
+                if abs(p_pos.speed) > max(abs(pos1.speed), abs(pos2.speed)):
                     t_event = max(t1, t2)
                     quality = (
                         "easier"
@@ -114,7 +114,7 @@ def check_future_prohibitions(
                             },
                         }
                     )
-                elif p_pos.speed < min(pos1.speed, pos2.speed):
+                elif abs(p_pos.speed) < min(abs(pos1.speed), abs(pos2.speed)):
                     t_event = max(t1, t2)
                     quality = (
                         "easier"
