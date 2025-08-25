@@ -29,6 +29,18 @@ ASPECT_TYPES: List[Aspect] = [
 ]
 
 
+def verb(aspect: Aspect) -> str:
+    """Return the verb form for a given aspect."""
+    mapping = {
+        Aspect.CONJUNCTION: "conjoins",
+        Aspect.SEXTILE: "sextiles",
+        Aspect.SQUARE: "squares",
+        Aspect.TRINE: "trines",
+        Aspect.OPPOSITION: "opposes",
+    }
+    return mapping.get(aspect, f"{aspect.display_name.lower()}s")
+
+
 def check_future_prohibitions(
     chart: HoraryChart,
     sig1: Planet,
@@ -199,7 +211,7 @@ def check_future_prohibitions(
                                         "prohibitor": planet,
                                         "significator": sig1,
                                         "t_prohibition": t1,
-                                        "reason": f"{planet.value} {aspect.display_name.lower()}s {sig1.value} before perfection",
+                                        "reason": f"{planet.value} {verb(aspect)} {sig1.value} before perfection",
                                     },
                                 }
                             )
@@ -213,7 +225,7 @@ def check_future_prohibitions(
                                         "prohibitor": planet,
                                         "significator": sig2,
                                         "t_prohibition": t2,
-                                        "reason": f"{planet.value} {aspect.display_name.lower()}s {sig2.value} before perfection",
+                                        "reason": f"{planet.value} {verb(aspect)} {sig2.value} before perfection",
                                     },
                                 }
                             )
@@ -227,7 +239,7 @@ def check_future_prohibitions(
                             "prohibitor": planet,
                             "significator": sig1,
                             "t_prohibition": t1,
-                            "reason": f"{planet.value} {aspect.display_name.lower()}s {sig1.value} before perfection",
+                            "reason": f"{planet.value} {verb(aspect)} {sig1.value} before perfection",
                         },
                     }
                 )
@@ -241,7 +253,7 @@ def check_future_prohibitions(
                             "prohibitor": planet,
                             "significator": sig2,
                             "t_prohibition": t2,
-                            "reason": f"{planet.value} {aspect.display_name.lower()}s {sig2.value} before perfection",
+                            "reason": f"{planet.value} {verb(aspect)} {sig2.value} before perfection",
                         },
                     }
                 )
