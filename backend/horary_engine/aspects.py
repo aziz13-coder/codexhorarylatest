@@ -118,7 +118,6 @@ def calculate_moon_next_aspect(
 
     moon_pos = planets[Planet.MOON]
     moon_speed = get_moon_speed(jd_ut)
-    moon_days_to_exit = days_to_sign_exit(moon_pos.longitude, moon_speed)
 
     # Only consider classical planets as targets
     classical_targets = {
@@ -155,10 +154,8 @@ def calculate_moon_next_aspect(
                         moon_pos, planet_pos, aspect_type, t
                     )
 
-                    # Skip aspects that perfect after Moon leaves its current sign
-                    if (
-                        moon_days_to_exit is not None and t > moon_days_to_exit
-                    ) or not within_sign:
+                    # Skip aspects that perfect after either planet leaves its current sign
+                    if not within_sign:
                         continue
 
                     applying_aspects.append(
