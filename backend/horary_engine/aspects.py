@@ -236,6 +236,7 @@ def calculate_enhanced_aspects(
             angle_diff = abs(_signed_longitude_delta(pos1.longitude, pos2.longitude))
 
             # Check each traditional aspect
+            aspect_candidates: List[AspectInfo] = []
             for aspect_type in Aspect:
                 orb_diff = abs(angle_diff - aspect_type.degrees)
 
@@ -267,7 +268,7 @@ def calculate_enhanced_aspects(
                         pos1, pos2, aspect_type, jd_ut, t
                     )
 
-                    aspects.append(
+                    aspect_candidates.append(
                         AspectInfo(
                             planet1=planet1,
                             planet2=planet2,
@@ -280,7 +281,11 @@ def calculate_enhanced_aspects(
                             degrees_to_exact=degrees_to_exact,
                         )
                     )
-                    break
+
+            if aspect_candidates:
+                # Choose candidate with smallest orb difference
+                best_aspect = min(aspect_candidates, key=lambda x: x.orb)
+                aspects.append(best_aspect)
 
     return aspects
 
