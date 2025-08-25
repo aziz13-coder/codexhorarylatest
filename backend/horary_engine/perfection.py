@@ -69,6 +69,8 @@ def check_future_prohibitions(
         exit_b = days_to_sign_exit(p_b.longitude, p_b.speed)
         return t < exit_a and t < exit_b
 
+    events: List[Dict[str, Any]] = []
+
     for planet in CLASSICAL_PLANETS:
         if planet in (sig1, sig2):
             continue
@@ -81,7 +83,6 @@ def check_future_prohibitions(
             t2 = calc_future_aspect_time(pos2, p_pos, aspect, chart.julian_day, days_ahead)
 
             if _valid(t1, pos1, p_pos) and _valid(t2, pos2, p_pos):
-                # Both significators aspect the planet before main perfection
                 if p_pos.speed > max(pos1.speed, pos2.speed):
                     t_event = max(t1, t2)
                     quality = (
@@ -98,17 +99,22 @@ def check_future_prohibitions(
                     )
                     if has_reception and quality == "with difficulty":
                         reason += " (softened by reception)"
-                    return {
-                        "prohibited": False,
-                        "type": "translation",
-                        "translator": planet,
-                        "t_event": t_event,
-                        "aspect": aspect,
-                        "quality": quality,
-                        "reception": has_reception,
-                        "reason": reason,
-                    }
-                if p_pos.speed < min(pos1.speed, pos2.speed):
+                    events.append(
+                        {
+                            "t": t_event,
+                            "payload": {
+                                "prohibited": False,
+                                "type": "translation",
+                                "translator": planet,
+                                "t_event": t_event,
+                                "aspect": aspect,
+                                "quality": quality,
+                                "reception": has_reception,
+                                "reason": reason,
+                            },
+                        }
+                    )
+                elif p_pos.speed < min(pos1.speed, pos2.speed):
                     t_event = max(t1, t2)
                     quality = (
                         "easier"
@@ -124,52 +130,79 @@ def check_future_prohibitions(
                     )
                     if has_reception and quality == "with difficulty":
                         reason += " (softened by reception)"
-                    return {
-                        "prohibited": False,
-                        "type": "collection",
-                        "collector": planet,
-                        "t_event": t_event,
-                        "aspect": aspect,
-                        "quality": quality,
-                        "reception": has_reception,
-                        "reason": reason,
-                    }
-                # Neither translation nor collection: first contact prohibits
-                if t1 <= t2:
-                    return {
-                        "prohibited": True,
-                        "type": "prohibition",
-                        "prohibitor": planet,
-                        "significator": sig1,
-                        "t_prohibition": t1,
-                        "reason": f"{planet.value} {aspect.display_name.lower()}s {sig1.value} before perfection",
-                    }
+                    events.append(
+                        {
+                            "t": t_event,
+                            "payload": {
+                                "prohibited": False,
+                                "type": "collection",
+                                "collector": planet,
+                                "t_event": t_event,
+                                "aspect": aspect,
+                                "quality": quality,
+                                "reception": has_reception,
+                                "reason": reason,
+                            },
+                        }
+                    )
                 else:
-                    return {
-                        "prohibited": True,
-                        "type": "prohibition",
-                        "prohibitor": planet,
-                        "significator": sig2,
-                        "t_prohibition": t2,
-                        "reason": f"{planet.value} {aspect.display_name.lower()}s {sig2.value} before perfection",
-                    }
+                    if t1 <= t2:
+                        events.append(
+                            {
+                                "t": t1,
+                                "payload": {
+                                    "prohibited": True,
+                                    "type": "prohibition",
+                                    "prohibitor": planet,
+                                    "significator": sig1,
+                                    "t_prohibition": t1,
+                                    "reason": f"{planet.value} {aspect.display_name.lower()}s {sig1.value} before perfection",
+                                },
+                            }
+                        )
+                    else:
+                        events.append(
+                            {
+                                "t": t2,
+                                "payload": {
+                                    "prohibited": True,
+                                    "type": "prohibition",
+                                    "prohibitor": planet,
+                                    "significator": sig2,
+                                    "t_prohibition": t2,
+                                    "reason": f"{planet.value} {aspect.display_name.lower()}s {sig2.value} before perfection",
+                                },
+                            }
+                        )
             elif _valid(t1, pos1, p_pos):
-                return {
-                    "prohibited": True,
-                    "type": "prohibition",
-                    "prohibitor": planet,
-                    "significator": sig1,
-                    "t_prohibition": t1,
-                    "reason": f"{planet.value} {aspect.display_name.lower()}s {sig1.value} before perfection",
-                }
+                events.append(
+                    {
+                        "t": t1,
+                        "payload": {
+                            "prohibited": True,
+                            "type": "prohibition",
+                            "prohibitor": planet,
+                            "significator": sig1,
+                            "t_prohibition": t1,
+                            "reason": f"{planet.value} {aspect.display_name.lower()}s {sig1.value} before perfection",
+                        },
+                    }
+                )
             elif _valid(t2, pos2, p_pos):
-                return {
-                    "prohibited": True,
-                    "type": "prohibition",
-                    "prohibitor": planet,
-                    "significator": sig2,
-                    "t_prohibition": t2,
-                    "reason": f"{planet.value} {aspect.display_name.lower()}s {sig2.value} before perfection",
-                }
+                events.append(
+                    {
+                        "t": t2,
+                        "payload": {
+                            "prohibited": True,
+                            "type": "prohibition",
+                            "prohibitor": planet,
+                            "significator": sig2,
+                            "t_prohibition": t2,
+                            "reason": f"{planet.value} {aspect.display_name.lower()}s {sig2.value} before perfection",
+                        },
+                    }
+                )
 
+    if events:
+        return min(events, key=lambda e: e["t"])["payload"]
     return {"prohibited": False, "type": "none", "reason": "No prohibitions detected"}
